@@ -1,0 +1,54 @@
+Login to RT GUI --> Admin --> Scrips --> Create
+
+Description: <anything you like>
+Condition: User Defined
+Action: User Defined
+Template: <Blank>
+Applies to: <Concerned RT Queue Name>
+
+##################################################################################################################
+Custom Condition:
+
+my $txn = $self->TransactionObj;
+if(($txn->NewValue eq "resolved") || ($txn->NewValue eq "rejected") || ($txn->NewValue eq "autorejected"))
+{
+    return 1;
+}
+else
+{
+    return 0;
+}
+
+#################################################################################################################
+Custom action preparation code: 
+
+# CONFIGURATION
+my $queue = ' ';        #RT Queue Name
+my $cf_name = ' ';      #Concerned Custom Field Name under the above queue
+# END CONFIGURATION
+
+RT::LoadConfig();
+RT::Init();
+my $tx = RT::Tickets->new($RT::SystemUser);
+my $cf = RT::CustomField->new($RT::SystemUser);
+my $q  = RT::Queue->new($RT::SystemUser);
+$q->Load($queue);
+$cf->LoadByNameAndQueue(Queue => $q->Id, Name => $cf_name);
+
+unless( $cf->id ) 
+{
+# queue 0 is special case and is a synonym for global queue
+$cf->LoadByNameAndQueue( Name => $cf_name, Queue => '0' );
+}
+
+unless( $cf->id ) 
+{
+  die "Could not load custom field";
+}
+my $new_cf_value = $self->TicketObj->AddCustomFieldValue(Field => $cf->Id, Value => '');
+
+#################################################################################################################
+
+Custom action commit code: 
+
+return 1;
